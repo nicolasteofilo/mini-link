@@ -17,8 +17,18 @@ export const linkNotFoundSchema = z.object({
   message: z.string(),
 });
 
+export const linkItemSchema = z.object({
+  id: z.string(),
+  slug: z.string(),
+  longUrl: z.url(),
+  shortUrl: z.url(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  isActive: z.boolean(),
+});
+
 export const meLinksSchemaOutput = z.object({
-  message: z.string(),
+  links: z.array(linkItemSchema),
 });
 
 export type CreateShortLinkInput = z.infer<typeof createShortLinkSchema>;

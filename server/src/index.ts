@@ -24,7 +24,6 @@ async function main() {
   );
 
   app.route("/api", apiRoutes);
-  app.route("/", linkRoutes);
   app.get(
     "/openapi.json",
     openAPIRouteHandler(app, {
@@ -43,6 +42,7 @@ async function main() {
   );
 
   app.get("/docs", Scalar({ url: "/openapi.json" }));
+  app.route("/", linkRoutes);
 
   serve({ fetch: app.fetch, port: env.PORT }, (info) => {
     console.log(`🚀 Server running on http://localhost:${info.port}`);

@@ -26,9 +26,7 @@ meRoutes.get(
     },
   }),
   authMiddleware,
-  async (c) => {
-    return c.json({ message: "User's links would be returned here." });
-  }
+  (c) => controller.listUserLinks(c)
 );
 
 meRoutes.post(

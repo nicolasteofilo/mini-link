@@ -27,9 +27,7 @@ authRoutes.post(
     },
   }),
   validator("json", registerSchemaInput),
-  (c) => {
-    return controller.register(c);
-  }
+  controller.register
 );
 
 authRoutes.post(
@@ -47,7 +45,5 @@ authRoutes.post(
     },
   }),
   validator("json", loginSchemaInput),
-  (c) => {
-    return controller.login(c);
-  }
+  controller.login
 );

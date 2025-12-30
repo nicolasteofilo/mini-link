@@ -59,4 +59,28 @@ export class LinkController {
 
     return c.redirect(linkDoc.longUrl, 302);
   }
+
+  async listUserLinks(c: Context) {
+    const userId = c.get("userId");
+    if (!userId) return c.json({ message: "Unauthorized" }, 401);
+
+    const links = await LinkModel.find({ userId }).sort({ createdAt: -1 }).lean();
+    const formattedLinks = links.map((link) => ({
+      id: link._id.toString(),
+      slug: link.slug,
+      longUrl: link.longUrl,
+      shortUrl: `${env.BASE_URL}/${link.slug}`,
+      createdAt:
+        link.createdAt instanceof Date
+          ? link.createdAt.toISOString()
+          : new Date(link.createdAt).toISOString(),
+      updatedAt:
+        link.updatedAt instanceof Date
+          ? link.updatedAt.toISOString()
+          : new Date(link.updatedAt).toISOString(),
+      isActive: link.isActive,
+    }));
+
+    return c.json({ links: formattedLinks }, 200);
+  }
 }
