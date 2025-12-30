@@ -1,41 +1,26 @@
 # MiniLink
 
-A minimal, production-minded **URL Shortener** with **JWT authentication**.  
-Create short links tied to a user account, store them in **MongoDB**, and redirect fast using the generated `slug`.
+A minimal, production-minded **URL Shortener** with JWT auth and OpenAPI docs.
 
 ---
 
-## Table of Contents
+## Contents
 
-- [MiniLink](#minilink)
-  - [Table of Contents](#table-of-contents)
-  - [Features](#features)
-  - [Tech Stack](#tech-stack)
-  - [Project Structure](#project-structure)
-  - [Getting Started](#getting-started)
-    - [Prerequisites](#prerequisites)
-    - [Environment Variables](#environment-variables)
-    - [Run MongoDB with Docker](#run-mongodb-with-docker)
-    - [Install \& Run](#install--run)
-  - [API Reference](#api-reference)
-    - [Auth](#auth)
-      - [Register](#register)
-      - [Login](#login)
-    - [Links](#links)
-      - [Create a short link (Protected)](#create-a-short-link-protected)
-      - [Redirect (Public)](#redirect-public)
-  - [Examples (cURL)](#examples-curl)
-    - [1) Register](#1-register)
-    - [2) Login](#2-login)
-    - [3) Shorten (Protected)](#3-shorten-protected)
-    - [4) Redirect](#4-redirect)
-  - [Scripts](#scripts)
-  - [Troubleshooting](#troubleshooting)
-    - [`shortUrl` doesn’t open / 404 on redirect](#shorturl-doesnt-open--404-on-redirect)
-    - [Mongo auth errors](#mongo-auth-errors)
-    - [Slug collision (409)](#slug-collision-409)
-  - [Roadmap](#roadmap)
-  - [License](#license)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Environment Variables](#environment-variables)
+  - [Run MongoDB with Docker](#run-mongodb-with-docker)
+  - [Install & Run](#install--run)
+- [API Docs](#api-docs)
+  - [Routes](#routes)
+- [Examples (cURL)](#examples-curl)
+- [Scripts](#scripts)
+- [Troubleshooting](#troubleshooting)
+- [Roadmap](#roadmap)
+- [License](#license)
 
 ---
 
@@ -47,6 +32,7 @@ Create short links tied to a user account, store them in **MongoDB**, and redire
 - ✅ **Redirect** via `slug`
 - ✅ **Request validation** using Zod
 - ✅ **MongoDB persistence** using Mongoose
+- ✅ **OpenAPI docs** at `/docs`
 - ✅ **Docker Compose** for local database setup
 
 ---
@@ -54,7 +40,7 @@ Create short links tied to a user account, store them in **MongoDB**, and redire
 ## Tech Stack
 
 - **Runtime:** Node.js
-- **HTTP Framework:** Hono (`@hono/node-server`)
+- **HTTP Framework:** Hono
 - **Language:** TypeScript
 - **Database:** MongoDB
 - **ODM:** Mongoose
@@ -65,22 +51,19 @@ Create short links tied to a user account, store them in **MongoDB**, and redire
 ---
 
 ## Project Structure
-
-> This is the typical layout. Your repo may vary slightly.
-
 ```
 .
 ├─ docker-compose.yml
 ├─ .env
 ├─ src/
-│  ├─ config/            # env parsing (Zod)
-│  ├─ controllers/       # route handlers (Auth/Links)
-│  ├─ db/                # mongoose connection + models
-│  ├─ http/schemas/      # Zod schemas (request validation)
-│  ├─ lib/               # helpers (slug generation, etc.)
-│  ├─ middlewares/       # auth middleware (JWT)
-│  ├─ routes/            # route grouping (optional)
-│  └─ index.ts           # app bootstrap (connect DB + serve)
+  │  ├─ config/            # env parsing (Zod)
+  │  ├─ controllers/       # route handlers (Auth/Links)
+  │  ├─ db/                # mongoose connection + models
+  │  ├─ http/schemas/      # Zod schemas (request validation)
+  │  ├─ lib/               # helpers (slug generation, etc.)
+  │  ├─ middlewares/       # auth middleware (JWT)
+  │  ├─ routes/            # route grouping
+  │  └─ index.ts           # app bootstrap (connect DB + serve)
 └─ package.json
 ```
 
@@ -106,8 +89,6 @@ PORT=3000
 MONGO_URI=mongodb://app:app123@localhost:27017/url_shortener?authSource=url_shortener
 
 # Public base URL used to build the "shortUrl" in responses.
-# If your redirect route is GET /api/:slug, include "/api" here.
-# If your redirect route is GET /:slug, use only the host.
 BASE_URL=http://localhost:3000/api
 
 # Slug / Auth
@@ -115,10 +96,6 @@ SLUG_SECRET=change-me-to-a-long-random-string
 JWT_SECRET=change-me-to-a-very-long-random-string
 JWT_EXPIRES_IN=7d
 ```
-
-> **Important:** `BASE_URL` must match how your redirect endpoint is exposed.
-> - Redirect at `GET /api/:slug` → `BASE_URL=http://localhost:3000/api`
-> - Redirect at `GET /:slug` → `BASE_URL=http://localhost:3000/api`
 
 ### Run MongoDB with Docker
 
@@ -141,89 +118,25 @@ pnpm install
 pnpm dev
 ```
 
-Server should be available at:
-
-- `http://localhost:3000`
+Server should be available at `http://localhost:3000`.
 
 ---
 
-## API Reference
+## API Docs
+
+- **OpenAPI JSON:** `http://localhost:3000/openapi.json`
+- **API UI:** `http://localhost:3000/docs`
+
+### Routes
 
 All endpoints below assume your API is mounted under `/api`.
 
-### Auth
-
-#### Register
-`POST /api/auth/register`
-
-**Body**
-```json
-{
-  "email": "user@example.com",
-  "password": "strong-password"
-}
-```
-
-**Response**
-```json
-{
-  "user": { "id": "USER_ID", "email": "user@example.com" },
-  "token": "JWT_TOKEN"
-}
-```
-
-#### Login
-`POST /api/auth/login`
-
-**Body**
-```json
-{
-  "email": "user@example.com",
-  "password": "strong-password"
-}
-```
-
-**Response**
-```json
-{
-  "user": { "id": "USER_ID", "email": "user@example.com" },
-  "token": "JWT_TOKEN"
-}
-```
-
----
-
-### Links
-
-#### Create a short link (Protected)
-`POST /api/shorten`
-
-**Headers**
-- `Authorization: Bearer <JWT_TOKEN>`
-- `Content-Type: application/json`
-
-**Body**
-```json
-{
-  "longUrl": "https://roadmap.sh/backend"
-}
-```
-
-**Response**
-```json
-{
-  "shortUrl": "http://localhost:3000/api/AbC123xY",
-  "longUrl": "https://roadmap.sh/backend"
-}
-```
-
-> The generated link is tied to the authenticated user (via `userId` in the database).
-
-#### Redirect (Public)
-`GET /api/:slug`
-
-- Returns `302` redirect to the stored `longUrl`
-- If not found, returns `404`
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/api/auth/register` | Public | Register a new user |
+| POST | `/api/auth/login` | Public | Login and get JWT |
+| POST | `/api/shorten` | Bearer | Create a short link |
+| GET | `/api/:slug` | Public | Redirect to original URL |
 
 ---
 
@@ -233,17 +146,10 @@ All endpoints below assume your API is mounted under `/api`.
 ```bash
 curl -s -X POST http://localhost:3000/api/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email":"test@test.com","password":"12345678"}'
+  -d '{"email":"test@test.com","password":"12345678","username":"test"}'
 ```
 
-### 2) Login
-```bash
-curl -s -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@test.com","password":"12345678"}'
-```
-
-### 3) Shorten (Protected)
+### 2) Shorten (Protected)
 ```bash
 TOKEN="PASTE_JWT_HERE"
 
@@ -251,11 +157,6 @@ curl -s -X POST http://localhost:3000/api/shorten \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"longUrl":"https://roadmap.sh/backend"}'
-```
-
-### 4) Redirect
-```bash
-curl -I http://localhost:3000/api/AbC123xY
 ```
 
 ---
@@ -273,10 +174,9 @@ Typical scripts (your `package.json` may differ):
 ## Troubleshooting
 
 ### `shortUrl` doesn’t open / 404 on redirect
-Make sure `BASE_URL` matches your redirect route:
+Make sure `BASE_URL` includes `/api` for the default routing setup:
 
 - Redirect is `GET /api/:slug` → `BASE_URL=http://localhost:3000/api`
-- Redirect is `GET /:slug` → `BASE_URL=http://localhost:3000`
 
 ### Mongo auth errors
 If you changed docker credentials after the volume existed, reset your volume:
@@ -298,7 +198,6 @@ docker compose up -d
 - [ ] Redis cache for ultra-fast redirects
 - [ ] Click analytics (async worker / queue)
 - [ ] Rate limiting + abuse protection
-- [ ] OpenAPI / Swagger docs
 
 ---
 

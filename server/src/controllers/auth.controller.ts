@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { env } from "@/config/env";
 import { UserModel } from "@/db/models/user";
-import { registerSchema, loginSchema } from "@/http/schemas/auth.schema";
+import { registerSchemaInput, loginSchemaInput } from "@/http/schemas/auth.schema";
 
 function signToken(userId: string) {
   return jwt.sign({ sub: userId }, env.JWT_SECRET, {
@@ -16,7 +16,7 @@ function signToken(userId: string) {
 export class AuthController {
   async register(c: Context) {
     const body = await c.req.json().catch(() => null);
-    const parsed = registerSchema.safeParse(body);
+    const parsed = registerSchemaInput.safeParse(body);
 
     if (!parsed.success) {
       return c.json({ message: "Invalid body", errors: z.treeifyError(parsed.error) }, 400);
@@ -45,7 +45,7 @@ export class AuthController {
 
   async login(c: Context) {
     const body = await c.req.json().catch(() => null);
-    const parsed = loginSchema.safeParse(body);
+    const parsed = loginSchemaInput.safeParse(body);
 
     if (!parsed.success) {
       return c.json({ message: "Invalid body", errors: z.treeifyError(parsed.error) }, 400);

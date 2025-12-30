@@ -1,4 +1,4 @@
-import { shortenSchema } from "@/http/schemas/link.schema";
+import { createShortLinkSchema } from "@/http/schemas/link.schema";
 import { Context } from "hono";
 import { z } from "zod";
 import { generateSlugBase62 } from "@/lib/slug";
@@ -8,7 +8,7 @@ import { env } from "@/config/env";
 export class LinkController {
   async generateShortLink(c: Context) {
     const body = await c.req.json().catch(() => null);
-    const passedBody = shortenSchema.safeParse(body);
+    const passedBody = createShortLinkSchema.safeParse(body);
     const userId = c.get("userId");
     if (!userId) return c.json({ message: "Unauthorized" }, 401);
 
