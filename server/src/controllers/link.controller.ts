@@ -9,6 +9,8 @@ export class LinkController {
   async generateShortLink(c: Context) {
     const body = await c.req.json().catch(() => null);
     const passedBody = shortenSchema.safeParse(body);
+    const userId = c.get("userId");
+    if (!userId) return c.json({ message: "Unauthorized" }, 401);
 
     if (!passedBody.success) {
       return c.json(
@@ -22,7 +24,7 @@ export class LinkController {
 
     const longUrl = passedBody.data.longUrl;
     const slug = generateSlugBase62({
-      secret: "TEST_SECRET_FOR_DEMO_PURPOSES_ONLY",
+      secret: env.SLUG_SECRET,
       length: 8,
       entropyBytes: 16,
     });
@@ -31,10 +33,11 @@ export class LinkController {
       const doc = await LinkModel.create({
         slug,
         longUrl,
+        userId,
       });
 
       return c.json({
-        shortUrl: `${env.BASE_URL}/${doc.slug}`,
+        shortUrl: `${env.BASE_URL}/api/${doc.slug}`,
         longUrl: doc.longUrl,
       });
     } catch (error: any) {

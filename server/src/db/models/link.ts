@@ -6,6 +6,7 @@ const LinkSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   isActive: { type: Boolean, default: true },
+  userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
 }, {
   timestamps: true,
 });
