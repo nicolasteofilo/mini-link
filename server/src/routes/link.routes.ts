@@ -1,10 +1,7 @@
 import { Hono } from "hono";
 import { describeRoute, resolver, validator } from "hono-openapi";
 import { LinkController } from "@/controllers/link.controller";
-import { authMiddleware } from "@/middlewares/auth.middleware";
 import {
-  createShortLinkSchema,
-  createShortLinkSchemaOutput,
   linkNotFoundSchema,
   redirectParamsSchema,
 } from "@/http/schemas/link.schema";
@@ -12,7 +9,6 @@ import {
 export const linkRoutes = new Hono();
 const controller = new LinkController();
 
-// público (redirect)
 linkRoutes.get(
   "/:slug",
   describeRoute({
@@ -32,24 +28,4 @@ linkRoutes.get(
   }),
   validator("param", redirectParamsSchema),
   (c) => controller.redirectToLongUrl(c)
-);
-
-// protegido (criar link)
-linkRoutes.post(
-  "/shorten",
-  describeRoute({
-    description: "Create a short link",
-    tags: ["Links"],
-    responses: {
-      200: {
-        description: "Successful response",
-        content: {
-          "application/json": { schema: resolver(createShortLinkSchemaOutput) },
-        },
-      },
-    },
-  }),
-  authMiddleware,
-  validator("json", createShortLinkSchema),
-  (c) => controller.generateShortLink(c)
 );

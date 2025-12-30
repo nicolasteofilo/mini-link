@@ -89,7 +89,7 @@ PORT=3000
 MONGO_URI=mongodb://app:app123@localhost:27017/url_shortener?authSource=url_shortener
 
 # Public base URL used to build the "shortUrl" in responses.
-BASE_URL=http://localhost:3000/api
+BASE_URL=http://localhost:3000
 
 # Slug / Auth
 SLUG_SECRET=change-me-to-a-long-random-string
@@ -135,8 +135,9 @@ All endpoints below assume your API is mounted under `/api`.
 | --- | --- | --- | --- |
 | POST | `/api/auth/register` | Public | Register a new user |
 | POST | `/api/auth/login` | Public | Login and get JWT |
-| POST | `/api/shorten` | Bearer | Create a short link |
-| GET | `/api/:slug` | Public | Redirect to original URL |
+| GET | `/api/me/links` | Bearer | List user links |
+| POST | `/api/me/links` | Bearer | Create a short link |
+| GET | `/:slug` | Public | Redirect to original URL |
 
 ---
 
@@ -153,7 +154,7 @@ curl -s -X POST http://localhost:3000/api/auth/register \
 ```bash
 TOKEN="PASTE_JWT_HERE"
 
-curl -s -X POST http://localhost:3000/api/shorten \
+curl -s -X POST http://localhost:3000/api/me/links \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"longUrl":"https://roadmap.sh/backend"}'
@@ -174,9 +175,9 @@ Typical scripts (your `package.json` may differ):
 ## Troubleshooting
 
 ### `shortUrl` doesn’t open / 404 on redirect
-Make sure `BASE_URL` includes `/api` for the default routing setup:
+Make sure `BASE_URL` matches your redirect setup:
 
-- Redirect is `GET /api/:slug` → `BASE_URL=http://localhost:3000/api`
+- Redirect is `GET /:slug` → `BASE_URL=http://localhost:3000`
 
 ### Mongo auth errors
 If you changed docker credentials after the volume existed, reset your volume:

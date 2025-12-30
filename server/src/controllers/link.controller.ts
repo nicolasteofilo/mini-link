@@ -37,7 +37,7 @@ export class LinkController {
       });
 
       return c.json({
-        shortUrl: `${env.BASE_URL}/api/${doc.slug}`,
+        shortUrl: `${env.BASE_URL}/${doc.slug}`,
         longUrl: doc.longUrl,
       });
     } catch (error: any) {

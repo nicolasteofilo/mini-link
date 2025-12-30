@@ -5,6 +5,7 @@ import { cors } from "hono/cors";
 import { env } from "@/config/env";
 import { connectDB } from "@/db/connection";
 import { apiRoutes } from "@/routes";
+import { linkRoutes } from "@/routes/link.routes";
 import { openAPIRouteHandler } from "hono-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
 
@@ -23,6 +24,7 @@ async function main() {
   );
 
   app.route("/api", apiRoutes);
+  app.route("/", linkRoutes);
   app.get(
     "/openapi.json",
     openAPIRouteHandler(app, {
