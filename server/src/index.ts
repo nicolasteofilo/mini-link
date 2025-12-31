@@ -1,52 +1,31 @@
 import "dotenv/config";
-import { serve } from "@hono/node-server";
-import { Hono } from "hono";
-import { cors } from "hono/cors";
+import express from "express";
+import cors from "cors";
 import { env } from "@/config/env";
 import { connectDB } from "@/db/connection";
 import { apiRoutes } from "@/routes";
 import { linkRoutes } from "@/routes/link.routes";
-import { openAPIRouteHandler } from "hono-openapi";
-import { Scalar } from "@scalar/hono-api-reference";
 
 async function main() {
   await connectDB();
 
-  const app = new Hono();
+  const app = express();
+  app.use(express.json());
 
   app.use(
-    "/api/*",
+    "/api",
     cors({
       origin: "*",
-      allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      allowHeaders: ["Content-Type", "Authorization"],
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
     })
   );
 
-  app.route("/api", apiRoutes);
-  app.get(
-    "/openapi.json",
-    openAPIRouteHandler(app, {
-      documentation: {
-        info: {
-          title: "MiniLink - An minimal URL Shortener API",
-          version: "1.0.0",
-          description:
-            "This is the OpenAPI specification for the MiniLink API, a minimal URL shortener service.",
-        },
-        servers: [
-          { url: "http://localhost:3000", description: "Local Server" },
-        ],
-      },
-    })
-  );
+  app.use("/api", apiRoutes);
+  app.use("/", linkRoutes);
 
-  app.get("/docs", Scalar({ url: "/openapi.json" }));
-  app.route("/", linkRoutes);
-
-  serve({ fetch: app.fetch, port: env.PORT }, (info) => {
-    console.log(`🚀 Server running on http://localhost:${info.port}`);
-    console.log(`📖 API docs available at http://localhost:${info.port}/docs`);
+  app.listen(env.PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${env.PORT}`);
   });
 }
 

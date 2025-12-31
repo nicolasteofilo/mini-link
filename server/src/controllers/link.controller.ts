@@ -1,24 +1,23 @@
 import { createShortLinkSchema } from "@/http/schemas/link.schema";
-import { Context } from "hono";
+import type { Request, Response } from "express";
 import { z } from "zod";
 import { generateSlugBase62 } from "@/lib/slug";
 import { LinkModel } from "@/db/models/link";
 import { env } from "@/config/env";
 
 export class LinkController {
-  async generateShortLink(c: Context) {
-    const body = await c.req.json().catch(() => null);
+  async generateShortLink(req: Request, res: Response) {
+    const body = req.body ?? null;
     const passedBody = createShortLinkSchema.safeParse(body);
-    const userId = c.get("userId");
-    if (!userId) return c.json({ message: "Unauthorized" }, 401);
+    const userId = res.locals.userId as string | undefined;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
     if (!passedBody.success) {
-      return c.json(
+      return res.status(400).json(
         {
           message: "Invalid request body.",
           errors: z.treeifyError(passedBody.error),
-        },
-        400
+        }
       );
     }
 
@@ -28,13 +27,12 @@ export class LinkController {
     });
 
     if (existingLink) {
-      return c.json(
+      return res.status(200).json(
         {
           message: "Link already exists",
           shortUrl: `${env.BASE_URL}/${existingLink.slug}`,
           longUrl: existingLink.longUrl,
-        },
-        200
+        }
       );
     }
 
@@ -52,32 +50,32 @@ export class LinkController {
         userId,
       });
 
-      return c.json({
+      return res.json({
         shortUrl: `${env.BASE_URL}/${doc.slug}`,
         longUrl: doc.longUrl,
       });
     } catch (error: any) {
       if (error?.code === 11000) {
-        return c.json({ message: "Slug already in use" }, 409);
+        return res.status(409).json({ message: "Slug already in use" });
       }
-      return c.json({ message: "Internal error" }, 500);
+      return res.status(500).json({ message: "Internal error" });
     }
   }
 
-  async redirectToLongUrl(c: Context) {
-    const { slug } = c.req.param();
+  async redirectToLongUrl(req: Request, res: Response) {
+    const { slug } = req.params;
     const linkDoc = await LinkModel.findOne({ slug });
 
     if (!linkDoc) {
-      return c.json({ message: "Link not found" }, 404);
+      return res.status(404).json({ message: "Link not found" });
     }
 
-    return c.redirect(linkDoc.longUrl, 302);
+    return res.redirect(302, linkDoc.longUrl);
   }
 
-  async listUserLinks(c: Context) {
-    const userId = c.get("userId");
-    if (!userId) return c.json({ message: "Unauthorized" }, 401);
+  async listUserLinks(req: Request, res: Response) {
+    const userId = res.locals.userId as string | undefined;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
     const links = await LinkModel.find({ userId })
       .sort({ createdAt: -1 })
@@ -98,6 +96,6 @@ export class LinkController {
       isActive: link.isActive,
     }));
 
-    return c.json({ links: formattedLinks }, 200);
+    return res.status(200).json({ links: formattedLinks });
   }
 }

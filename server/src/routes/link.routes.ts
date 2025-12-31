@@ -1,31 +1,13 @@
-import { Hono } from "hono";
-import { describeRoute, resolver, validator } from "hono-openapi";
+import { Router } from "express";
 import { LinkController } from "@/controllers/link.controller";
-import {
-  linkNotFoundSchema,
-  redirectParamsSchema,
-} from "@/http/schemas/link.schema";
+import { redirectParamsSchema } from "@/http/schemas/link.schema";
+import { validateParams } from "@/middlewares/validate.middleware";
 
-export const linkRoutes = new Hono();
+export const linkRoutes = Router();
 const controller = new LinkController();
 
 linkRoutes.get(
   "/:slug",
-  describeRoute({
-    description: "Redirect to the original URL",
-    tags: ["Links"],
-    responses: {
-      302: {
-        description: "Redirect to the original URL",
-      },
-      404: {
-        description: "Link not found",
-        content: {
-          "application/json": { schema: resolver(linkNotFoundSchema) },
-        },
-      },
-    },
-  }),
-  validator("param", redirectParamsSchema),
-  (c) => controller.redirectToLongUrl(c)
+  validateParams(redirectParamsSchema),
+  (req, res) => controller.redirectToLongUrl(req, res)
 );

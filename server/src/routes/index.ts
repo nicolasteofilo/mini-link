@@ -1,8 +1,8 @@
-import { Hono } from "hono";
+import { Router } from "express";
 import { authRoutes } from "./auth.routes";
 import { meRoutes } from "./me.routes";
 
-export const apiRoutes = new Hono();
+export const apiRoutes = Router();
 
-apiRoutes.route("/auth", authRoutes);
-apiRoutes.route("/me", meRoutes);
+apiRoutes.use("/auth", authRoutes);
+apiRoutes.use("/me", meRoutes);

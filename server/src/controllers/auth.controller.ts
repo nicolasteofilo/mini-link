@@ -1,4 +1,4 @@
-import type { Context } from "hono";
+import type { Request, Response } from "express";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -14,12 +14,14 @@ function signToken(userId: string) {
 
 
 export class AuthController {
-  async register(c: Context) {
-    const body = await c.req.json().catch(() => null);
+  async register(req: Request, res: Response) {
+    const body = req.body ?? null;
     const parsed = registerSchemaInput.safeParse(body);
 
     if (!parsed.success) {
-      return c.json({ message: "Invalid body", errors: z.treeifyError(parsed.error) }, 400);
+      return res
+        .status(400)
+        .json({ message: "Invalid body", errors: z.treeifyError(parsed.error) });
     }
 
     const username = parsed.data.username.trim();
@@ -30,38 +32,39 @@ export class AuthController {
       const user = await UserModel.create({ username, email, passwordHash });
       const token = signToken(user._id.toString());
 
-      return c.json(
+      return res.status(201).json(
         {
           user: { id: user._id.toString(), email: user.email, username: user.username },
           token,
-        },
-        201
+        }
       );
     } catch (err: any) {
-      if (err?.code === 11000) return c.json({ message: "Email already in use" }, 409);
-      return c.json({ message: "Internal error" }, 500);
+      if (err?.code === 11000) return res.status(409).json({ message: "Email already in use" });
+      return res.status(500).json({ message: "Internal error" });
     }
   }
 
-  async login(c: Context) {
-    const body = await c.req.json().catch(() => null);
+  async login(req: Request, res: Response) {
+    const body = req.body ?? null;
     const parsed = loginSchemaInput.safeParse(body);
 
     if (!parsed.success) {
-      return c.json({ message: "Invalid body", errors: z.treeifyError(parsed.error) }, 400);
+      return res
+        .status(400)
+        .json({ message: "Invalid body", errors: z.treeifyError(parsed.error) });
     }
 
     const email = parsed.data.email.toLowerCase().trim();
     const user = await UserModel.findOne({ email });
 
-    if (!user) return c.json({ message: "Invalid credentials" }, 401);
+    if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
     const ok = await bcrypt.compare(parsed.data.password, user.passwordHash);
-    if (!ok) return c.json({ message: "Invalid credentials" }, 401);
+    if (!ok) return res.status(401).json({ message: "Invalid credentials" });
 
     const token = signToken(user._id.toString());
 
-    return c.json({
+    return res.json({
       user: { id: user._id.toString(), email: user.email },
       token,
     });
