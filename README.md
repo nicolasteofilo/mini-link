@@ -1,207 +1,120 @@
-# MiniLink
+# Mini Link API
 
-A minimal, production-minded **URL Shortener** with JWT auth and OpenAPI docs.
+Minimal URL shortener API built with Express and TypeScript, with MongoDB for persistence and Redis for cache.
 
----
+## Index
 
-## Contents
+- [Mini Link API](#mini-link-api)
+  - [Index](#index)
+  - [Stack](#stack)
+  - [Server Structure](#server-structure)
+  - [Cache (Redis)](#cache-redis)
+    - [Cache invalidation](#cache-invalidation)
+  - [Setup](#setup)
+  - [Environment](#environment)
+  - [Run](#run)
+  - [Endpoints](#endpoints)
+  - [Examples](#examples)
+  - [Build](#build)
 
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Environment Variables](#environment-variables)
-  - [Run MongoDB with Docker](#run-mongodb-with-docker)
-  - [Install & Run](#install--run)
-- [API Docs](#api-docs)
-  - [Routes](#routes)
-- [Examples (cURL)](#examples-curl)
-- [Scripts](#scripts)
-- [Troubleshooting](#troubleshooting)
-- [Roadmap](#roadmap)
-- [License](#license)
+## Stack
 
----
+- Express + TypeScript
+- MongoDB (Mongoose)
+- Redis (cache)
+- Zod (validation)
 
-## Features
+## Server Structure
 
-- ✅ **Register / Login** with email + password
-- ✅ **JWT Auth** (Bearer token)
-- ✅ **Create short links** and associate them to the authenticated user
-- ✅ **Redirect** via `slug`
-- ✅ **Request validation** using Zod
-- ✅ **MongoDB persistence** using Mongoose
-- ✅ **OpenAPI docs** at `/docs`
-- ✅ **Docker Compose** for local database setup
-
----
-
-## Tech Stack
-
-- **Runtime:** Node.js
-- **HTTP Framework:** Hono
-- **Language:** TypeScript
-- **Database:** MongoDB
-- **ODM:** Mongoose
-- **Validation:** Zod
-- **Auth:** JWT
-- **Dev runner:** `tsx`
-
----
-
-## Project Structure
-```
-.
-├─ docker-compose.yml
-├─ .env
-├─ src/
-  │  ├─ config/            # env parsing (Zod)
-  │  ├─ controllers/       # route handlers (Auth/Links)
-  │  ├─ db/                # mongoose connection + models
-  │  ├─ http/schemas/      # Zod schemas (request validation)
-  │  ├─ lib/               # helpers (slug generation, etc.)
-  │  ├─ middlewares/       # auth middleware (JWT)
-  │  ├─ routes/            # route grouping
-  │  └─ index.ts           # app bootstrap (connect DB + serve)
-└─ package.json
+```text
+src/
+  cache/
+  config/
+  controllers/
+  db/
+  docs/
+  http/schemas/
+  lib/
+  middlewares/
+  routes/
+  index.ts
 ```
 
----
+## Cache (Redis)
 
-## Getting Started
+The redirect endpoint caches slug lookups in Redis to avoid repeated DB hits. Missing slugs are cached briefly to reduce repeated queries.
 
-### Prerequisites
+### Cache invalidation
 
-- **Node.js** (LTS recommended)
-- **pnpm**
-- **Docker** + **Docker Compose**
+Cache entries expire by TTL only:
+- Found slug: 24h
+- Missing slug: 60s
 
-### Environment Variables
-
-Create a `.env` file at the project root:
-
-```env
-NODE_ENV=development
-PORT=3000
-
-# Mongo
-MONGO_URI=mongodb://app:app123@localhost:27017/url_shortener?authSource=url_shortener
-
-# Public base URL used to build the "shortUrl" in responses.
-BASE_URL=http://localhost:3000
-
-# Slug / Auth
-SLUG_SECRET=change-me-to-a-long-random-string
-JWT_SECRET=change-me-to-a-very-long-random-string
-JWT_EXPIRES_IN=7d
-```
-
-### Run MongoDB with Docker
-
-From the repo root:
-
-```bash
-docker compose up -d
-```
-
-Check logs:
-
-```bash
-docker logs -f mongo
-```
-
-### Install & Run
+## Setup
 
 ```bash
 pnpm install
-pnpm dev
 ```
 
-Server should be available at `http://localhost:3000`.
-
----
-
-## API Docs
-
-- **OpenAPI JSON:** `http://localhost:3000/openapi.json`
-- **API UI:** `http://localhost:3000/docs`
-
-### Routes
-
-All endpoints below assume your API is mounted under `/api`.
-
-| Method | Path | Auth | Description |
-| --- | --- | --- | --- |
-| POST | `/api/auth/register` | Public | Register a new user |
-| POST | `/api/auth/login` | Public | Login and get JWT |
-| GET | `/api/me/links` | Bearer | List user links |
-| POST | `/api/me/links` | Bearer | Create a short link |
-| GET | `/:slug` | Public | Redirect to original URL |
-
----
-
-## Examples (cURL)
-
-### 1) Register
-```bash
-curl -s -X POST http://localhost:3000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@test.com","password":"12345678","username":"test"}'
-```
-
-### 2) Shorten (Protected)
-```bash
-TOKEN="PASTE_JWT_HERE"
-
-curl -s -X POST http://localhost:3000/api/me/links \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"longUrl":"https://roadmap.sh/backend"}'
-```
-
----
-
-## Scripts
-
-Typical scripts (your `package.json` may differ):
-
-- `pnpm dev` → runs with `tsx watch`
-- `pnpm build` → TypeScript build
-- `pnpm start` → runs the compiled output
-
----
-
-## Troubleshooting
-
-### `shortUrl` doesn’t open / 404 on redirect
-Make sure `BASE_URL` matches your redirect setup:
-
-- Redirect is `GET /:slug` → `BASE_URL=http://localhost:3000`
-
-### Mongo auth errors
-If you changed docker credentials after the volume existed, reset your volume:
+Start MongoDB + Redis:
 
 ```bash
-docker compose down -v
 docker compose up -d
 ```
 
-### Slug collision (409)
-`slug` is `unique` in Mongo. Collisions should be extremely rare, but if it happens the API may return `409` (try again).
+## Environment
 
----
+Create a `.env` with:
 
-## Roadmap
+```bash
+NODE_ENV=development
+PORT=3000
+MONGO_URI=mongodb://localhost:27017/mini-link
+MONGO_ROOT_USER=admin
+MONGO_ROOT_PASSWORD=admin
+BASE_URL=http://localhost:3000
+JWT_SECRET=replace_with_32_chars_min
+SLUG_SECRET=replace_with_32_chars_min
+JWT_EXPIRES_IN=7d
+REDIS_URL=redis://localhost:6379
+```
 
-- [ ] List user links (`GET /api/me/links`)
-- [ ] Expiration (`expiresAt`) + soft delete (`isActive`)
-- [ ] Redis cache for ultra-fast redirects
-- [ ] Click analytics (async worker / queue)
-- [ ] Rate limiting + abuse protection
+## Run
 
----
+```bash
+pnpm dev
+```
 
-## License
+## Endpoints
 
-See `LICENSE`.
+| Method | Path               | Auth      | Description                  |
+| ------ | ------------------ | --------- | ---------------------------- |
+| POST   | /api/auth/register | Public    | Create a new user account    |
+| POST   | /api/auth/login    | Public    | Authenticate and return JWT  |
+| GET    | /api/me/links      | Bearer    | List links for current user  |
+| POST   | /api/me/links      | Bearer    | Create a new short link      |
+| GET    | /:slug             | Public    | Redirect to the original URL |
+
+## Examples
+
+Create short link:
+
+```bash
+curl -X POST http://localhost:3000/api/me/links \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"longUrl":"https://example.com"}'
+```
+
+Redirect:
+
+```bash
+curl -I http://localhost:3000/abc12345
+```
+
+## Build
+
+```bash
+pnpm build
+pnpm start
+```
