@@ -7,10 +7,12 @@ import { apiRoutes } from "@/routes";
 import { linkRoutes } from "@/routes/link.routes";
 import { apiReference } from '@scalar/express-api-reference'
 import { openApiDocument } from "@/docs/openapi";
+import { connectRedis, disconnectRedis } from "@/cache/redis";
 
 async function main() {
   await connectDB();
-
+  await connectRedis();
+  
   const app = express();
   app.use(express.json());
 
@@ -41,6 +43,14 @@ async function main() {
     console.log(`🚀 Server running on http://localhost:${env.PORT}`);
     console.log(`📖 API docs available at http://localhost:${env.PORT}/docs`);
   });
+
+  const shutdown = async () => {
+    await disconnectRedis();
+    process.exit(0);
+  };
+
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 }
 
 main();

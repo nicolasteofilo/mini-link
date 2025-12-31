@@ -1,11 +1,20 @@
-import { createShortLinkSchema } from "@/http/schemas/link.schema";
-import type { Request, Response } from "express";
 import { z } from "zod";
+import type { Request, Response } from "express";
+import { createShortLinkSchema } from "@/http/schemas/link.schema";
+import { env } from "@/config/env";
 import { generateSlugBase62 } from "@/lib/slug";
 import { LinkModel } from "@/db/models/link";
-import { env } from "@/config/env";
+import {
+  getLinkBySlugCache,
+  setLinkBySlugCache,
+  setLinkBySlugNotFoundCache,
+} from "@/cache/link-cache";
 
 export class LinkController {
+  constructor(
+    private readonly CACHE_TTL_SECONDS = 60 * 60 * 24 // 24h
+  ) {}
+
   async generateShortLink(req: Request, res: Response) {
     const body = req.body ?? null;
     const passedBody = createShortLinkSchema.safeParse(body);
@@ -13,12 +22,10 @@ export class LinkController {
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
     if (!passedBody.success) {
-      return res.status(400).json(
-        {
-          message: "Invalid request body.",
-          errors: z.treeifyError(passedBody.error),
-        }
-      );
+      return res.status(400).json({
+        message: "Invalid request body.",
+        errors: z.treeifyError(passedBody.error),
+      });
     }
 
     const existingLink = await LinkModel.findOne({
@@ -27,13 +34,11 @@ export class LinkController {
     });
 
     if (existingLink) {
-      return res.status(200).json(
-        {
-          message: "Link already exists",
-          shortUrl: `${env.BASE_URL}/${existingLink.slug}`,
-          longUrl: existingLink.longUrl,
-        }
-      );
+      return res.status(200).json({
+        message: "Link already exists",
+        shortUrl: `${env.BASE_URL}/${existingLink.slug}`,
+        longUrl: existingLink.longUrl,
+      });
     }
 
     const longUrl = passedBody.data.longUrl;
@@ -64,22 +69,38 @@ export class LinkController {
 
   async redirectToLongUrl(req: Request, res: Response) {
     const { slug } = req.params;
-    const linkDoc = await LinkModel.findOne({ slug });
 
-    if (!linkDoc) {
+    const cached = await getLinkBySlugCache(slug);
+    if (cached.status === "hit") {
+      return res.redirect(302, cached.longUrl);
+    }
+    
+    if (cached.status === "not_found") {
       return res.status(404).json({ message: "Link not found" });
     }
+
+    const linkDoc = await LinkModel.findOne({ slug })
+      .select({ longUrl: 1 })
+      .lean();
+
+    if (!linkDoc) {
+      await setLinkBySlugNotFoundCache(slug, 60);
+      return res.status(404).json({ message: "Link not found" });
+    }
+
+    await setLinkBySlugCache(slug, linkDoc.longUrl, this.CACHE_TTL_SECONDS);
 
     return res.redirect(302, linkDoc.longUrl);
   }
 
-  async listUserLinks(req: Request, res: Response) {
+  async listUserLinks(_req: Request, res: Response) {
     const userId = res.locals.userId as string | undefined;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
     const links = await LinkModel.find({ userId })
       .sort({ createdAt: -1 })
       .lean();
+
     const formattedLinks = links.map((link) => ({
       id: link._id.toString(),
       slug: link.slug,

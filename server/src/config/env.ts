@@ -10,6 +10,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32),
   SLUG_SECRET: z.string().min(32),
   JWT_EXPIRES_IN: z.coerce.string().default("7d"),
+  REDIS_URL: z.string().default("redis://localhost:6379"),
 });
 
 const _env = envSchema.safeParse(process.env);
