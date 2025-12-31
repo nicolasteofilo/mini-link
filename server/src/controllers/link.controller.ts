@@ -22,6 +22,22 @@ export class LinkController {
       );
     }
 
+    const existingLink = await LinkModel.findOne({
+      longUrl: passedBody.data.longUrl,
+      userId,
+    });
+
+    if (existingLink) {
+      return c.json(
+        {
+          message: "Link already exists",
+          shortUrl: `${env.BASE_URL}/${existingLink.slug}`,
+          longUrl: existingLink.longUrl,
+        },
+        200
+      );
+    }
+
     const longUrl = passedBody.data.longUrl;
     const slug = generateSlugBase62({
       secret: env.SLUG_SECRET,
@@ -50,7 +66,6 @@ export class LinkController {
 
   async redirectToLongUrl(c: Context) {
     const { slug } = c.req.param();
-
     const linkDoc = await LinkModel.findOne({ slug });
 
     if (!linkDoc) {
@@ -64,7 +79,9 @@ export class LinkController {
     const userId = c.get("userId");
     if (!userId) return c.json({ message: "Unauthorized" }, 401);
 
-    const links = await LinkModel.find({ userId }).sort({ createdAt: -1 }).lean();
+    const links = await LinkModel.find({ userId })
+      .sort({ createdAt: -1 })
+      .lean();
     const formattedLinks = links.map((link) => ({
       id: link._id.toString(),
       slug: link.slug,
