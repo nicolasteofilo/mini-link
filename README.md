@@ -1,7 +1,7 @@
 <a id="readme-top"></a>
 
 <div align="center">
-  <h3 align="center">🔗 Mini Link API</h3>
+  <h3 align="center">🔗 Mini Link</h3>
   <p align="center">
     URL shortener API with auth, MongoDB, and Redis cache.
     <br />
